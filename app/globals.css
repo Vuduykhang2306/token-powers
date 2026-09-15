@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+body {
+  background: #0f1115;
+  color: #e6e9ef;
+}
+
+/* Long addresses should wrap rather than push the layout sideways on a phone. */
+.hash { overflow-wrap: anywhere; }
