@@ -1,9 +1,9 @@
 /**
- * Runs the app's own reading logic against Ethereum mainnet, with no browser.
+ * Runs the app's reading logic against Ethereum mainnet, without a browser.
  *
- * The point is that the analysis in `lib/` is testable on its own: it takes
- * contract reads in and produces verdicts out, so it can be checked against
- * tokens whose behaviour is already known rather than only eyeballed in the UI.
+ * The analysis in `lib/` can be tested on its own: it takes contract reads in
+ * and gives verdicts out, so it can be checked against tokens whose behaviour
+ * is already known instead of only by looking at the UI.
  *
  *   npm run verify
  */

@@ -1,23 +1,23 @@
 import { formatUnits, isAddressEqual, zeroAddress, type Address } from "viem";
 
 /**
- * Turning raw reads into a verdict.
+ * Turns the raw reads into a verdict.
  *
- * The distinction this file is built around came out of reviewing a launchpad
- * token template: there are two different kinds of danger in these contracts and
- * people conflate them.
+ * This file is built around something I noticed while reviewing a launchpad
+ * token template: these contracts have two different kinds of danger, and
+ * people mix them up.
  *
  *  - An OWNER POWER is something a privileged address can choose to do later:
  *    raise the tax, freeze a holder, switch trading off. Renouncing ownership
- *    kills all of them permanently.
+ *    removes all of these for good.
  *
- *  - A BAKED-IN MECHANISM runs on its own, on every transfer, with nobody
- *    calling anything. Renouncing ownership does not kill it. It makes it
- *    permanent, because the setter that could have switched it off is now
- *    unreachable too.
+ *  - A BAKED-IN MECHANISM runs by itself on every transfer, without anyone
+ *    calling anything. Renouncing ownership doesn't remove it. It makes it
+ *    permanent, because the setter that could have turned it off can't be
+ *    called anymore either.
  *
- * "Ownership renounced" is read everywhere as a clean bill of health. For the
- * second kind it is the opposite.
+ * People usually read "ownership renounced" as "safe". For the second kind it
+ * means the opposite.
  */
 
 export type Verdict = "safe" | "warn" | "risk" | "unknown";
@@ -26,9 +26,9 @@ export type Power = {
   id: string;
   title: string;
   verdict: Verdict;
-  /** One sentence, in terms of what it does to the person holding the token. */
+  /** One sentence about what this means for someone holding the token. */
   detail: string;
-  /** The on-chain read this conclusion rests on, so it can be checked by hand. */
+  /** The on-chain read behind this conclusion, so anyone can check it by hand. */
   evidence: string;
 };
 
@@ -71,7 +71,7 @@ export function analyse(p: Probes, decimals: number, totalSupply?: bigint): Powe
       title: "Ownership",
       verdict: "unknown",
       detail:
-        "No owner() or getOwner(). Either there is genuinely no admin, or control sits behind a name this tool does not probe for. Read the source before assuming the former.",
+        "No owner() or getOwner(). Either there is no admin, or control is behind a name this tool does not probe for. Check the source before assuming there is no admin.",
       evidence: "owner() and getOwner() both revert",
     });
   } else if (renounced) {
@@ -151,7 +151,7 @@ export function analyse(p: Probes, decimals: number, totalSupply?: bigint): Powe
       title: "Holding and buy limits",
       verdict: on ? (renounced ? "warn" : "risk") : "safe",
       detail: on
-        ? `Limits are active. Max wallet ${fmt(maxWallet)}, max buy ${fmt(maxBuy)}. Set low enough, a limit stops transfers rather than merely capping them.${ownerNote}`
+        ? `Limits are active. Max wallet ${fmt(maxWallet)}, max buy ${fmt(maxBuy)}. If a limit is set low enough, it blocks transfers completely.${ownerNote}`
         : "No wallet or buy limits were enabled at construction.",
       evidence: `enableWalletLimit()/enableSwapLimit()`,
     });

@@ -5,7 +5,7 @@ import { isAddress, type Address } from "viem";
 import { ConnectButton } from "@/components/ConnectButton";
 import { TokenReport } from "@/components/TokenReport";
 
-/** Tokens worth looking at. The first is the one my review was written against. */
+/** Example tokens. The first one is the token from my review. */
 const EXAMPLES: { label: string; address: Address; note: string }[] = [
   {
     label: "BabyGOAT",
@@ -21,8 +21,8 @@ export default function Home() {
   const [token, setToken] = useState<Address | null>(null);
   const valid = isAddress(input.trim());
 
-  // ?token=0x... makes a result shareable, which is the whole point of a page
-  // like this: you send someone the link, not a screenshot of a verdict.
+  // ?token=0x... makes a result shareable, so you can send someone the link
+  // instead of a screenshot.
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("token");
     if (fromUrl && isAddress(fromUrl)) {

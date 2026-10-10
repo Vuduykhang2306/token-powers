@@ -15,30 +15,30 @@ import { erc20Abi } from "./abi";
 /**
  * Can this wallet actually sell?
  *
- * Reading flags tells you what powers exist. It does not tell you whether a
- * sell goes through right now, because the block can come from somewhere the
- * flags do not mention. So this asks the chain directly, using `eth_call` with
- * a state override: give the wallet a balance that it does not really have,
- * then try the transfer and see whether the EVM reverts. Nothing is signed and
- * nothing is broadcast - the override exists only inside that one call.
+ * Reading flags tells you which powers exist. It doesn't tell you whether a
+ * sell works right now, because the thing blocking it might not be one of the
+ * flags. So this asks the chain directly, using `eth_call` with a state
+ * override: give the wallet a balance it doesn't really have, try the
+ * transfer, and see whether the EVM reverts. Nothing is signed or broadcast,
+ * and the override only exists inside that one call.
  *
- * This is the same thing the fork proofs of concept in my audit repo do, minus
+ * It's the same thing the fork PoCs in my audit repo do, just without
  * Foundry. There the harness calls `deal()` to fake a balance; here the RPC
  * does it.
  *
- * Two honest limits:
+ * Two limits:
  *
  *  - The sell is simulated at the token level, as a transfer straight to the
- *    pair, which is what the router's `transferFrom` ends up doing. It does not
- *    price the swap, so it proves the transfer is allowed, not that the trade
- *    is worth making.
- *  - Finding the balance slot is a guess-and-check over the first 32 storage
- *    slots. Tokens that store balances somewhere unusual, behind a proxy, or in
- *    a packed struct will not be found, and the answer is "could not determine"
- *    rather than a wrong reassurance.
+ *    pair, which is what the router's `transferFrom` does in the end. It
+ *    doesn't price the swap, so it only shows the transfer is allowed, not
+ *    that the trade makes sense.
+ *  - The balance slot is found by trial and error over the first 32 storage
+ *    slots. Tokens that keep balances somewhere unusual, behind a proxy or in
+ *    a packed struct won't be found, and the answer is "could not determine"
+ *    instead of a false all-clear.
  */
 
-/** Distinctive enough that matching it back is not a coincidence. */
+/** An unusual number, so reading it back can't be a coincidence. */
 const FAKE_BALANCE = 123_456_789n * 10n ** 18n;
 const SLOTS_TO_TRY = 32;
 

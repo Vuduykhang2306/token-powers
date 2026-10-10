@@ -9,5 +9,5 @@ body {
   color: #e6e9ef;
 }
 
-/* Long addresses should wrap rather than push the layout sideways on a phone. */
+/* Let long addresses wrap so they don't break the layout on phones. */
 .hash { overflow-wrap: anywhere; }

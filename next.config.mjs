@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 
-// Static export so the whole thing can sit on GitHub Pages with no server.
-// BASE_PATH is set by the deploy workflow; empty for local dev.
+// Static export so the site can run on GitHub Pages without a server.
+// BASE_PATH comes from the deploy workflow and is empty for local dev.
 const basePath = process.env.BASE_PATH ?? "";
 
 export default {

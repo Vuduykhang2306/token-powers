@@ -1,13 +1,13 @@
-// A probe ABI, not a real one.
+// Probe ABI, not a real interface.
 //
-// No token implements all of this. The point is the opposite: call every entry
-// against an unknown address and see which ones answer. A function that answers
-// is a power the deployer wrote into the contract; one that reverts is a power
-// this token does not have.
+// No token has all of these functions. The idea is to call every entry on an
+// unknown address and see which ones answer. If a function answers, the
+// deployer wrote that power into the contract. If it reverts, this token
+// doesn't have it.
 //
 // The flag names come from the launchpad template I reviewed in
-// smart-contract-security-lab/reviews/2026-09_FatTokenV5. That template is used
-// by more than one deployment, so the names are worth probing for by hand.
+// smart-contract-security-lab/reviews/2026-09_FatTokenV5. More than one token
+// uses that template, so it makes sense to probe for its names directly.
 
 export const erc20Abi = [
   { name: "name", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
@@ -33,7 +33,7 @@ export const erc20Abi = [
   },
 ] as const;
 
-/** `decimals()` returning uint256 instead of uint8 - finding T-08 of the review. */
+/** `decimals()` that returns uint256 instead of uint8 (finding T-08 in the review). */
 export const decimalsUint256Abi = [
   { name: "decimals", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
 ] as const;
@@ -94,8 +94,8 @@ export const probeAbi = [
   uint("maxWalletAmount"),
   uint("maxBuyAmount"),
 
-  // Per-address flags. Several naming conventions are in circulation, so all of
-  // them get probed and whichever answers is the one this token uses.
+  // Per-address flags. Different tokens use different names for these, so we
+  // probe all of them and use whichever one answers.
   uintOfAddress("isReward"),
   boolOfAddress("isBlacklisted"),
   boolOfAddress("_blackList"),

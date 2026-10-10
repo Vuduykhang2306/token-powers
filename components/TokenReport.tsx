@@ -8,7 +8,7 @@ import { analyse, fees, flagFunction, formatBps, ownerOf, type Probes } from "@/
 import { checkCanSell, type SellCheck } from "@/lib/simulate";
 import { PowerCard } from "./PowerCard";
 
-/** Stand-in holder when no wallet is connected. Nothing special about it. */
+/** Placeholder holder address, used when no wallet is connected. */
 const PROBE_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;
 
 type Props = { token: Address };
@@ -18,8 +18,8 @@ export function TokenReport({ token }: Props) {
   const client = usePublicClient();
   const who = (connected ?? PROBE_ADDRESS) as Address;
 
-  // Built at runtime from the probe list, so it is typed as a plain array of
-  // call parameters rather than the literal tuple wagmi infers from inline code.
+  // Built at runtime from the probe list, so it's typed as a plain array of
+  // call parameters instead of the exact tuple wagmi infers from inline code.
   const contracts = useMemo<ContractFunctionParameters[]>(
     () => [
       { address: token, abi: erc20Abi, functionName: "name" },
@@ -33,16 +33,16 @@ export function TokenReport({ token }: Props) {
     [token, who],
   );
 
-  // allowFailure is the whole mechanism: most of these functions do not exist on
-  // any given token, and a revert is the answer, not an error.
+  // allowFailure is what makes this work: most of these functions don't exist
+  // on a given token, so here a revert is an answer and not an error.
   const { data, isLoading, isError } = useReadContracts({
     contracts,
     allowFailure: true,
     query: { enabled: Boolean(token) },
   });
 
-  // T-08 of the review: a token whose decimals() returns uint256 instead of
-  // uint8. The standard read reverts on decoding, so it gets a second attempt.
+  // T-08 in the review: some tokens return uint256 from decimals() instead of
+  // uint8. The normal read fails to decode, so we try a second time.
   const decimalsFallback = useReadContracts({
     contracts: [
       { address: token, abi: decimalsUint256Abi, functionName: "decimals" },

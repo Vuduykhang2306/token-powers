@@ -6,8 +6,8 @@ import { WagmiProvider } from "wagmi";
 import { config } from "@/lib/wagmi";
 
 export function Providers({ children }: { children: ReactNode }) {
-  // One client per mount, not a module-level singleton: a singleton would be
-  // shared across requests during prerender.
+  // One client per mount instead of a module-level singleton, because a
+  // singleton would be shared across requests during prerender.
   const [queryClient] = useState(
     () =>
       new QueryClient({
