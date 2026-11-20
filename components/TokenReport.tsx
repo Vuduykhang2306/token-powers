@@ -175,7 +175,7 @@ export function TokenReport({ token }: Props) {
                 <p className="mt-2 text-sm">
                   {sell.status === "sellable" ? (
                     <span className="text-safe">
-                      The transfer to the pair goes through. Found the balance at storage slot {sell.slot}.
+                      The transfer to the pair goes through. Found the balance at storage slot {sell.slot}{sell.layout === "vyper" ? " (Vyper layout)" : ""}.
                     </span>
                   ) : sell.status === "blocked" ? (
                     <span className="text-risk">Blocked: {sell.reason}</span>

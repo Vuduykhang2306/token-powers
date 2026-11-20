@@ -33,25 +33,34 @@ import { erc20Abi } from "./abi";
  *    doesn't price the swap, so it only shows the transfer is allowed, not
  *    that the trade makes sense.
  *  - The balance slot is found by trial and error over the first 32 storage
- *    slots. Tokens that keep balances somewhere unusual, behind a proxy or in
- *    a packed struct won't be found, and the answer is "could not determine"
- *    instead of a false all-clear.
+ *    slots, hashed the Solidity way and the Vyper way. A proxy is fine, since
+ *    the override goes to the proxy's own storage, which is what the
+ *    implementation reads. Tokens whose balanceOf isn't the stored number
+ *    (stETH returns shares times a rate) won't be found, and the answer is
+ *    "could not determine" instead of a false all-clear. ERC-7201 namespaced
+ *    storage is untested.
  */
 
 /** An unusual number, so reading it back can't be a coincidence. */
 const FAKE_BALANCE = 123_456_789n * 10n ** 18n;
 const SLOTS_TO_TRY = 32;
 
-function mappingSlot(holder: Address, slot: number) {
+export type Layout = "solidity" | "vyper";
+
+function mappingSlot(holder: Address, slot: number, layout: Layout) {
   // Solidity puts mapping(address => uint) entries at keccak256(key . slot).
+  // Vyper hashes the other way round, keccak256(slot . key). CRV is one.
+  if (layout === "vyper") {
+    return keccak256(encodeAbiParameters(parseAbiParameters("uint256, address"), [BigInt(slot), holder]));
+  }
   return keccak256(encodeAbiParameters(parseAbiParameters("address, uint256"), [holder, BigInt(slot)]));
 }
 
 const fakeValue = pad(toHex(FAKE_BALANCE), { size: 32 });
 
 export type SellCheck =
-  | { status: "sellable"; slot: number }
-  | { status: "blocked"; slot: number; reason: string }
+  | { status: "sellable"; slot: number; layout: Layout }
+  | { status: "blocked"; slot: number; layout: Layout; reason: string }
   | { status: "unknown"; reason: string };
 
 async function balanceUnderOverride(
@@ -59,12 +68,13 @@ async function balanceUnderOverride(
   token: Address,
   holder: Address,
   slot: number,
+  layout: Layout,
 ): Promise<bigint | undefined> {
   try {
     const { data } = await client.call({
       to: token,
       data: encodeFunctionData({ abi: erc20Abi, functionName: "balanceOf", args: [holder] }),
-      stateOverride: [{ address: token, stateDiff: [{ slot: mappingSlot(holder, slot), value: fakeValue }] }],
+      stateOverride: [{ address: token, stateDiff: [{ slot: mappingSlot(holder, slot, layout), value: fakeValue }] }],
     });
     if (!data) return undefined;
     return decodeFunctionResult({ abi: erc20Abi, functionName: "balanceOf", data }) as bigint;
@@ -78,12 +88,15 @@ export async function findBalanceSlot(
   client: PublicClient,
   token: Address,
   holder: Address,
-): Promise<number | undefined> {
+): Promise<{ slot: number; layout: Layout } | undefined> {
   const slots = Array.from({ length: SLOTS_TO_TRY }, (_, i) => i);
-  // The transport batches these, so this is a handful of requests, not 32.
-  const results = await Promise.all(slots.map((s) => balanceUnderOverride(client, token, holder, s)));
-  const hit = results.findIndex((v) => v === FAKE_BALANCE);
-  return hit === -1 ? undefined : hit;
+  for (const layout of ["solidity", "vyper"] as const) {
+    // The transport batches these, so this is a handful of requests, not 32.
+    const results = await Promise.all(slots.map((s) => balanceUnderOverride(client, token, holder, s, layout)));
+    const hit = results.findIndex((v) => v === FAKE_BALANCE);
+    if (hit !== -1) return { slot: hit, layout };
+  }
+  return undefined;
 }
 
 function revertReason(err: unknown): string {
@@ -101,18 +114,19 @@ export async function checkCanSell(
   pair: Address,
   holder: Address,
 ): Promise<SellCheck> {
-  let slot: number | undefined;
+  let found: { slot: number; layout: Layout } | undefined;
   try {
-    slot = await findBalanceSlot(client, token, holder);
+    found = await findBalanceSlot(client, token, holder);
   } catch (err) {
     return { status: "unknown", reason: `the node refused the state override (${revertReason(err)})` };
   }
-  if (slot === undefined) {
+  if (found === undefined) {
     return {
       status: "unknown",
       reason: "could not locate the balance slot in the first 32 storage slots",
     };
   }
+  const { slot, layout } = found;
 
   // Sell a thousandth of the faked balance: large enough to clear any dust
   // guard, small enough to stay under a max-transaction cap.
@@ -123,12 +137,12 @@ export async function checkCanSell(
       to: token,
       data: encodeFunctionData({ abi: erc20Abi, functionName: "transfer", args: [pair, amount] }),
       stateOverride: [
-        { address: token, stateDiff: [{ slot: mappingSlot(holder, slot), value: fakeValue }] },
+        { address: token, stateDiff: [{ slot: mappingSlot(holder, slot, layout), value: fakeValue }] },
         { address: holder, balance: parseEther("1") },
       ],
     });
-    return { status: "sellable", slot };
+    return { status: "sellable", slot, layout };
   } catch (err) {
-    return { status: "blocked", slot, reason: revertReason(err) };
+    return { status: "blocked", slot, layout, reason: revertReason(err) };
   }
 }

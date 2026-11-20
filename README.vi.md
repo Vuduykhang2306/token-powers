@@ -63,7 +63,9 @@ tồn tại trong đúng lần gọi đó.
 
 Muốn biết ghi số dư giả vào đâu thì phải dò: với từng ô trong 32 ô nhớ đầu
 tiên, tính `keccak256(địa chỉ . số ô)`, ghi đè, rồi đọc lại `balanceOf`. Ô nào
-trả về đúng con số giả thì đó là mapping số dư.
+trả về đúng con số giả thì đó là mapping số dư. Nếu không ô nào khớp, nó dò
+lại với `keccak256(số ô . địa chỉ)`, là cách Vyper sắp xếp mapping. CRV cần
+lượt dò thứ hai này.
 
 Cách này giống mấy PoC chạy trên fork trong repo audit của tôi, chỉ là không
 dùng Foundry. Ở đó harness gọi `deal()`, ở đây RPC làm việc đó.
@@ -76,9 +78,11 @@ dùng Foundry. Ở đó harness gọi `deal()`, ở đây RPC làm việc đó.
 - Lệnh bán được mô phỏng ở tầng token, tức là chuyển thẳng sang pair, đúng như
   việc `transferFrom` của router cuối cùng làm. Nó cho biết lệnh chuyển được
   phép, chứ không cho biết giao dịch đó có lời hay không.
-- Dò ô nhớ sẽ thất bại với một số token: proxy, struct đóng gói, bố cục bộ nhớ
-  lạ. Những trường hợp đó trả về "không xác định được", chứ không báo an toàn
-  sai.
+- Dò ô nhớ sẽ thất bại khi `balanceOf` không trả về đúng con số đang lưu.
+  stETH là một ví dụ: nó lưu shares rồi nhân với tỉ giá khi trả ra. Những
+  trường hợp đó trả về "không xác định được", chứ không báo an toàn sai. Proxy
+  thì không sao, vì ghi đè rơi vào bộ nhớ của chính proxy (USDC và AAVE đều
+  chạy được). Token dùng namespaced storage kiểu ERC-7201 thì chưa thử.
 - Nó không đọc mã nguồn. Quyền sở hữu nằm sau multisig hay timelock nhìn ở đây
   giống hệt quyền sở hữu nằm trong khoá riêng của một người.
 

@@ -64,7 +64,8 @@ broadcast, and the fake balance only exists inside that one call.
 Finding where to write the fake balance is trial and error. For each of the
 first 32 storage slots, compute `keccak256(address . slot)`, override it, and
 read `balanceOf` back. The slot that returns the fake number is the balance
-mapping.
+mapping. If none of them does, it tries again with `keccak256(slot . address)`,
+which is how Vyper lays out a mapping. CRV needs that second pass.
 
 It's the same thing the fork PoCs in my audit repo do, just without Foundry.
 There the harness calls `deal()`; here the RPC does it.
@@ -77,8 +78,11 @@ There the harness calls `deal()`; here the RPC does it.
 - The sell is simulated at the token level, as a transfer straight to the
   pair, which is what the router's `transferFrom` does in the end. It shows the
   transfer is allowed. It doesn't show the trade is worth making.
-- Slot discovery fails on some tokens: proxies, packed structs, unusual
-  layouts. Those show "could not determine" instead of a false all-clear.
+- Slot discovery fails when `balanceOf` isn't the stored number. stETH is one:
+  it stores shares and multiplies by a rate on the way out. Those show "could
+  not determine" instead of a false all-clear. Proxies are fine, since the
+  override lands in the proxy's own storage (USDC and AAVE both work). Tokens
+  using ERC-7201 namespaced storage are untested.
 - It doesn't read the source. Ownership behind a multisig or a timelock looks
   the same here as ownership behind one person's key.
 
